@@ -45,25 +45,27 @@ app.config.from_object(__name__)
 #: This is our database - an inmemory set from the compressed file
 f = gzip.open('dictionary.txt.gz', 'rb')
 file_content = f.read()
-dictionary_words = set()
+dictionary_words = []
 
 for word in file_content.split('\n'):
-    dictionary_words.add(word)
+    dictionary_words.append(word)
 
-dictionary_words = set(filter(None, dictionary_words))
+dictionary_words = filter(None, dictionary_words)
 
-
+# test
 @app.endpoint('words.json')
 @app.route('/words.json', methods=['POST', 'DELETE', 'GET'])
 def bouncer():
+    global dictionary_words
     if request.method == 'POST':
         input_words = request.get_json(force=True)
         for in_word in input_words['words']:
-            dictionary_words.add(in_word)
+            if in_word not in dictionary_words:
+                dictionary_words.append(in_word)
         return '', 201
 
     elif request.method == 'DELETE':
-        dictionary_words.clear()
+        dictionary_words = []
         return '', 204
 
     elif request.method == 'GET':
@@ -89,6 +91,7 @@ def bouncer():
 
 @app.route('/anagrams/<word>', methods=['GET', 'DELETE'])
 def gramanas(word):
+    global dictionary_words
     if request.method == 'DELETE':
         real_word = word.split('.')[0]
         lower_case = request.args.get('ignorecase')
@@ -101,7 +104,7 @@ def gramanas(word):
                 if sorted(dict_word) == sorted(real_word):
                     deletes.append(dict_word)
         for i in deletes:
-            dictionary_words.discard(i)
+            dictionary_words.remove(i)
         return '', 204
 
     else:
@@ -125,9 +128,10 @@ def gramanas(word):
 
 @app.route('/words/<word>', methods=['DELETE', 'GET'])
 def deleteOne(word):
+    global dictionary_words
     if request.method == 'DELETE':
         real_word = word.split('.')[0]
-        dictionary_words.discard(real_word)
+        dictionary_words.remove(real_word)
         return '', 200
 
     elif request.method == 'GET':
